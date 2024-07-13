@@ -1,0 +1,158 @@
+---
+title: "Visualizing the History of Nobel Winners"
+author: "Ceren Ünal"
+date: "2024-07-13"
+output: 
+  html_document:
+    #code_folding: hide
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    toc_collapsed: false
+    theme: flatly
+    number_sections: yes
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Data
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+nobel <- read_csv("nobel.csv")
+```
+
+# Explore Data
+
+```{r}
+glimpse(nobel)
+```
+
+The data set consists of 18 variables and 1000 observations. Many are character variables, with only 2 being numeric and 2 being dates. 
+
+```{r}
+
+min(nobel$year)
+max(nobel$year)
+```
+
+The data covers years from 1901 to 2023.  
+
+```{r}
+
+colSums(is.na(nobel))
+```
+
+10 variables have missing values, including sex variable. 
+
+```{r}
+nobel %>% 
+  filter(is.na(sex)) %>% 
+  mutate(birth_date_na = is.na (birth_date)) %>% 
+  summarise(sum(birth_date_na))
+```
+
+All observations that have a missing value in the sex variable, are also missing the birth_date values. It seems that these are all organizations, not persons.  
+
+```{r}
+length(unique(nobel$category))
+length(unique(nobel$full_name))
+length(unique(nobel$organization_name))
+
+```
+
+There are 6 prize categories.  
+There have been 993 unique winners, meaning some have won more than once.  
+There are also only 326 organization names, some have received multiple prizes.  
+
+
+
+# What is the most commonly awarded gender and birth country?  
+
+
+```{r}
+nobel %>%
+  group_by(sex) %>%
+  count() %>%
+  arrange(desc(n))
+```
+
+The most commonly awarded gender is male. 
+
+
+```{r}
+nobel %>%
+  group_by(birth_country) %>%
+  count() %>%
+  arrange(desc(n))
+```
+
+The most commonly awarded country is the USA.  
+
+# What decade had the highest proportion of US-born winners?  
+
+
+```{r}
+nobel %>% 
+  mutate(decade = year %/% 10 * 10) %>% 
+  group_by(decade) %>% 
+  mutate(all_winners = n()) %>% 
+  group_by(decade, birth_country) %>% 
+  filter(birth_country == "United States of America") %>% 
+  mutate(us_born_winners = n()) %>% 
+  ungroup() %>% 
+  group_by(decade) %>% 
+  reframe(prop = us_born_winners/all_winners) %>% 
+  arrange(desc(prop))
+```
+
+2000s had the highest proportion of US-born winners. 
+
+# What decade and category pair had the highest proportion of female laureates?  
+
+```{r}
+nobel %>% 
+  select(year, category, sex) %>% 
+  mutate(decade = year %/% 10 * 10) %>% 
+  group_by(decade, category) %>% 
+  mutate(all_winners = n()) %>% 
+  group_by(decade, sex) %>% 
+  filter(sex == "Female") %>% 
+  mutate(female_winners = n()) %>% 
+  ungroup() %>% 
+  group_by(decade, category) %>% 
+  reframe(prop = female_winners/all_winners) %>% 
+  arrange(desc(prop))
+```
+
+2020s and Literature pair had the highest proportion of female winners. 
+
+
+# Who was the first woman to receive a Nobel Prize, and in what category?  
+
+```{r}
+nobel %>% 
+  select(year, sex, category) %>% 
+  filter(sex == "Female") %>% 
+  arrange(year)
+```
+
+The first woman to receive the Nobel Prize, was awarded the prize in 1903 in physics category.  
+
+# Which individuals or organizations have won multiple Nobel Prizes throughout the years? 
+
+```{r}
+nobel %>% 
+  group_by(full_name) %>% 
+  count() %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n))
+```
+
+2 organizations and 4 individuals were awarded multiple Nobel Prizes.  
